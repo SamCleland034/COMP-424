@@ -1,5 +1,6 @@
 package boardgame;
 
+import java.awt.EventQueue;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,7 +14,6 @@ import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
-import java.awt.EventQueue;
 
 /**
  * Generic boardgame server. TODO The winner determination in case of a client
@@ -153,7 +153,7 @@ public class Server implements Runnable {
                 // If we have too many servers running, wait for one to finish
                 while (servers.size() >= MAX_SERVERS) {
                     for (int i = 0; i < servers.size(); i++) {
-                        Server s = (Server) servers.get(i);
+                        Server s = servers.get(i);
                         synchronized (s) {
                             if (s.gameEnded)
                                 servers.removeElementAt(i);
@@ -259,7 +259,8 @@ public class Server implements Runnable {
 
     // The run method just starts the server's connections and
     // then returns.
-    public void run() {
+    @Override
+	public void run() {
         // Get the logfile directory
         logDir = new File(log_dir);
         if (!logDir.isDirectory()) {
@@ -642,13 +643,15 @@ public class Server implements Runnable {
         final int f_player_id = player_id;
 
         timeoutTask = new TimerTask() {
-            public void run() {
+            @Override
+			public void run() {
                 timeOut(f_player_id);
             }
         };
 
         killTimeoutTask = new TimerTask() {
-            public void run() {
+            @Override
+			public void run() {
                 killTimeOut(f_player_id);
             }
         };
@@ -732,7 +735,8 @@ public class Server implements Runnable {
             EventQueue.invokeLater(this);
         }
 
-        public void run() {
+        @Override
+		public void run() {
             gui.waitingForConnection(who);
         }
     }
@@ -749,7 +753,8 @@ public class Server implements Runnable {
             EventQueue.invokeLater(this);
         }
 
-        public void run() {
+        @Override
+		public void run() {
             gui.gameStarted(b, id, who);
         }
     }
@@ -764,7 +769,8 @@ public class Server implements Runnable {
             EventQueue.invokeLater(this);
         }
 
-        public void run() {
+        @Override
+		public void run() {
             gui.boardUpdated(b, m);
         }
     }
@@ -777,7 +783,8 @@ public class Server implements Runnable {
             EventQueue.invokeLater(this);
         }
 
-        public void run() {
+        @Override
+		public void run() {
             gui.gameEnded(how);
         }
     }
@@ -859,7 +866,8 @@ public class Server implements Runnable {
             return ready;
         }
 
-        public void run() {
+        @Override
+		public void run() {
             String inputLine;
             try {
                 while (true) {
