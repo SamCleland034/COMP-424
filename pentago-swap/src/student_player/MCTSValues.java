@@ -7,7 +7,7 @@ import pentago_swap.PentagoCoord;
 import pentago_swap.PentagoMove;
 
 public class MCTSValues {
-	private static double c = 1;
+	private static double c = 0.9;
 	public static HashMap<PentagoBoardState, Integer> statesVisited = new HashMap<>();
 
 	public static boolean IsMoveEqual(PentagoMove pm1, PentagoMove pm2) {
@@ -54,45 +54,5 @@ public class MCTSValues {
 
 	public static void setC(double c) {
 		MCTSValues.c = c;
-	}
-
-
-	public static double getStatesVisited(PentagoBoardState state) {
-		for(PentagoBoardState pbs : statesVisited.keySet()) {
-			if(isStateEqual(pbs, state)) {
-				return statesVisited.get(pbs);
-			}
-		}
-
-		statesVisited.put(state, 0);
-		return 0;
-	}
-
-	public static void addStateVisited(PentagoBoardState copy) {
-		PentagoBoardState clone = (PentagoBoardState) copy.clone();
-		Integer value = null;
-		for(PentagoBoardState pbs : statesVisited.keySet()) {
-			if(isStateEqual(copy, pbs)) {
-				value = statesVisited.get(pbs);
-				if(value == null) {
-					value = 0;
-				}
-
-				statesVisited.put(pbs, value + 1);
-				return;
-			}
-		}
-
-		statesVisited.put(clone, 1);
-	}
-
-	public static PentagoBoardState getState(PentagoBoardState pbs) {
-		for(PentagoBoardState state : statesVisited.keySet()) {
-			if(isStateEqual(state, pbs)) {
-				return state;
-			}
-		}
-
-		return null;
 	}
 }
