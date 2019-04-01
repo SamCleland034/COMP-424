@@ -1,20 +1,25 @@
 package student_player;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import boardgame.Board;
 import boardgame.Move;
 import pentago_swap.PentagoBoardState;
+import pentago_swap.PentagoBoardState.Piece;
+import pentago_swap.PentagoBoardState.Quadrant;
+import pentago_swap.PentagoCoord;
 import pentago_swap.PentagoMove;
 import pentago_swap.PentagoPlayer;
 
 /** A player file submitted by a student. */
 public class StudentPlayer extends PentagoPlayer {
 
-	public List<Node>nodes = new ArrayList<>();
+	static final double BIAS = 3;
 	int player;
+	private List<PentagoMove> allMoves = new ArrayList<>();
+	List<PentagoMove> priorityNodes = new ArrayList<>();
+
 
     /**
      * You must modify this constructor to return your student number. This is
@@ -23,6 +28,42 @@ public class StudentPlayer extends PentagoPlayer {
      */
     public StudentPlayer() {
         super("260675996");
+    }
+
+    public List<PentagoMove> getAllMoves(PentagoBoardState boardState) {
+    	ArrayList<PentagoMove> moves = new ArrayList<>();
+    	for(PentagoMove move : allMoves) {
+    		if(boardState.isLegal(move)) {
+    			if(boardState.getTurnNumber() < 2 && player == 1) {
+    				if(adjacentTo(move.getMoveCoord(), boardState)) {
+    					moves.add(move);
+    				}
+    			} else {
+    				if(adjacentTo(move.getMoveCoord(), boardState)) {
+    					priorityNodes.add(move);
+    				}
+
+        			moves.add(move);
+    			}
+    		}
+    	}
+
+    	return moves;
+    }
+
+    public void setMoves(PentagoBoardState boardState) {
+    	for(int p = 0; p < 2; p++) {
+			for(int i = 0; i < 6; i++) {
+				for(int j = 0; j < 6; j++) {
+					allMoves.add(new PentagoMove(i, j, Quadrant.BL, Quadrant.BR, p));
+					allMoves.add(new PentagoMove(i, j, Quadrant.BL, Quadrant.TL, p));
+					allMoves.add(new PentagoMove(i, j, Quadrant.BL, Quadrant.TR, p));
+					allMoves.add(new PentagoMove(i, j, Quadrant.TL, Quadrant.BR, p));
+					allMoves.add(new PentagoMove(i, j, Quadrant.TL, Quadrant.TR, p));
+					allMoves.add(new PentagoMove(i, j, Quadrant.TR, Quadrant.BR, p));
+				}
+			}
+    	}
     }
 
     /**
@@ -36,11 +77,32 @@ public class StudentPlayer extends PentagoPlayer {
         // For example, maybe you'll need to load some pre-processed best opening
         // strategies...
     	long startTime = System.currentTimeMillis();
+    	if(boardState.getTurnNumber() == 0) {
+    		setMoves(boardState);
+    	}
+
     	player = boardState.getTurnPlayer();
     	List<Node> tempNodes = new ArrayList<>();
+    	List<PentagoMove> moves = getAllMoves(boardState);
+    	if(boardState.getTurnNumber() > 4) {
+    		for(PentagoMove move : moves) {
+        		PentagoBoardState copy = (PentagoBoardState) boardState.clone();
+        		copy.processMove(move);
+        		if(copy.gameOver() && copy.getWinner() == player) {
+        			return move;
+        		}
+    		}
+    	}
 
+		for(PentagoMove move : moves) {
+        	Node tempNode = new Node(move, boardState, null);
+        	tempNodes.add(tempNode);
+        	if(adjacentTo(tempNode.move.getMoveCoord(), boardState)) {
+        		priorityNodes.add(move);
+        	}
+		}
 
-    	Iterator<Node> it = nodes.iterator();
+    	/*Iterator<Node> it = nodes.iterator();
     	secondLoop : while(it.hasNext()) {
     		Node node = it.next();
     		if(node == null) {
@@ -67,10 +129,10 @@ public class StudentPlayer extends PentagoPlayer {
         	Node tempNode = new Node(move, boardState, null);
         	tempNodes.add(tempNode);
         	nodes.add(tempNode);
-        }
+        }*/
 
         PentagoBoardState copy = null;
-        int stopTime = boardState.getTurnNumber() == 0 ? 29000 : 1800;
+        int stopTime = boardState.getTurnNumber() == 0 ? 25000 : 1000;
         while(System.currentTimeMillis() - startTime < stopTime) {
             copy = (PentagoBoardState) boardState.clone();
             startTreePolicy(copy, tempNodes);
@@ -82,18 +144,62 @@ public class StudentPlayer extends PentagoPlayer {
         	double bestNodeVal = calculateBestMove(bestMove);
         	if(bestMove == null || nodeVal > bestNodeVal) {
         		bestMove = node;
+        	} else if(nodeVal == bestNodeVal) {
+        		if(node.games > bestMove.games) {
+        			bestMove = node;
+        		}
         	}
         }
 
-        nodes.clear();
-        nodes.addAll(bestMove.next);
+
+       MCTSValues.statesVisited.remove(MCTSValues.getState(boardState));
+       priorityNodes.clear();
 
         // Return your move to be processed by the server.
         System.out.println("Best move = " + bestMove.wins / (double) bestMove.games + " or " + bestMove.wins + " / " + bestMove.games);
         return bestMove.move;
     }
 
-    private double calculateBestMove(Node node) {
+    private boolean adjacentTo(PentagoCoord moveCoord, PentagoBoardState boardState) {
+    	int x = moveCoord.getX();
+    	int y = moveCoord.getY();
+
+    	Piece piece = Piece.WHITE;
+    	if(player == 0) {
+    		piece = Piece.BLACK;
+    	}
+
+    	int lowerX = x - 1;
+    	if(lowerX < 0) {
+    		lowerX = 0;
+    	}
+
+    	int lowerY = y - 1;
+    	if(lowerY < 0) {
+    		lowerY = 0;
+    	}
+
+    	int upperX = x + 1;
+    	if(upperX > 5) {
+    		upperX = 5;
+    	}
+
+    	int upperY = y + 1;
+    	if(upperY > 5) {
+    		upperY = 5;
+    	}
+
+    	if(boardState.getPieceAt(x, lowerY) == piece || boardState.getPieceAt(x, upperY) == piece ||
+    			boardState.getPieceAt(lowerX, y) == piece || boardState.getPieceAt(upperX, y) == piece
+    			|| boardState.getPieceAt(upperX, upperY) == piece || boardState.getPieceAt(upperX, upperY) == piece
+    			|| boardState.getPieceAt(lowerX, upperY) == piece || boardState.getPieceAt(lowerX, lowerY) == piece) {
+    		return true;
+    	}
+
+    	return false;
+	}
+
+	private double calculateBestMove(Node node) {
     	if(node == null) {
     		return -1;
     	}
@@ -102,7 +208,12 @@ public class StudentPlayer extends PentagoPlayer {
     		return -1;
     	}
 
-    	return node.wins / (double) node.games;
+    	double score = (node.wins / (double) node.games) * (Math.log10(node.games) / 3.0);
+    	if(priorityNodes.contains(node.move)) {
+    		score *= BIAS;
+    	}
+
+    	return score;
     }
 
 	private int startTreePolicy(PentagoBoardState copy, List<Node> nodesLayer) {
@@ -118,13 +229,18 @@ public class StudentPlayer extends PentagoPlayer {
 
 		MCTSValues.addStateVisited(copy);
 		copy.processMove(promisingNode.move);
-		copy.processMove((PentagoMove) copy.getRandomMove());
 		if(promisingNode.next == null || promisingNode.next.isEmpty()) {
-			PentagoBoardState pbs = (PentagoBoardState) copy.clone();
+			PentagoBoardState pbs = MCTSValues.getState(copy);
+			if(pbs == null) {
+				pbs = (PentagoBoardState) copy.clone();
+				MCTSValues.addStateVisited(pbs);
+			}
+
 			promisingNode.next = new ArrayList<>();
-			for(PentagoMove move : copy.getAllLegalMoves()) {
+			for(PentagoMove move : getAllMoves(pbs)) {
 				promisingNode.next.add(new Node(move, pbs, new ArrayList<>()));
 			}
+
 			int value = startDefaultPolicy(copy);
 			return calculateMCTS(promisingNode, value);
 		}
